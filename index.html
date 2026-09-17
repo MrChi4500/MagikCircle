@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Rotokawau Magic Circle</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; color: #eee; font-family: system-ui, sans-serif; }
+    #hud {
+      position: fixed; left: 16px; right: 16px; bottom: 24px; z-index: 10;
+      text-align: center; pointer-events: none; font-size: 15px; line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">Quest Browser → Enter AR. Look down. Circle sits on the floor in front of you.</div>
+
+  <a-scene
+    vr-mode-ui="enabled: true"
+    webxr="requiredFeatures: local-floor; optionalFeatures: hit-test, anchors, unbounded;"
+    renderer="alpha: true; colorManagement: true;"
+    background="transparent: true">
+
+    <a-assets>
+      <a-asset-item id="circle" src="magic_circle_v1.glb"></a-asset-item>
+    </a-assets>
+
+    <a-entity
+      id="rig"
+      position="0 0 -1.1"
+      gltf-model="#circle"
+      animation-mixer="clip: CircleLoop; loop: repeat"
+      shadow="cast: false; receive: false">
+    </a-entity>
+
+    <a-entity id="cam" camera look-controls position="0 1.2 0"></a-entity>
+  </a-scene>
+</body>
+</html>
