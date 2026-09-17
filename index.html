@@ -84,6 +84,17 @@
 
     const mixers = [];
     const clock = new THREE.Clock();
+    let trailHead = null;
+    const TRAIL_SEGS = 40;
+    const trailPts = [];
+    const trailMeshes = [];
+    const trailGeo = new THREE.SphereGeometry(0.045, 8, 6);
+    const trailMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false
+    });
 
     const STEAM_COUNT = 48;
     const RING_R = 0.95;
@@ -171,21 +182,23 @@
         (gltf) => {
           const trail = gltf.scene;
           trail.scale.setScalar(0.24);
-          trail.position.y = 0.04;
+          trail.position.y = 0.06;
 
           let empty = null;
-          let plane = null;
           trail.traverse((obj) => {
             if (obj.name === 'Empty') empty = obj;
-            if (obj.name === 'Plane' || obj.isMesh) plane = obj.isMesh ? obj : plane;
+            if (obj.isMesh) obj.visible = false;
           });
-          if (empty && plane && plane.parent !== empty) {
-            empty.attach(plane);
-            plane.scale.setScalar(0.18);
-          }
-
-          boostGlow(trail);
+          trailHead = empty;
           root.add(trail);
+
+          for (let i = 0; i < TRAIL_SEGS; i++) {
+            const bead = new THREE.Mesh(trailGeo, trailMat.clone());
+            bead.frustumCulled = false;
+            bead.renderOrder = 25;
+            root.add(bead);
+            trailMeshes.push(bead);
+          }
 
           if (gltf.animations && gltf.animations.length) {
             const m = new THREE.AnimationMixer(trail);
@@ -199,6 +212,27 @@
       );
     }
 
+    const _headPos = new THREE.Vector3();
+    function updateRibbon() {
+      if (!trailHead) return;
+      trailHead.getWorldPosition(_headPos);
+      root.worldToLocal(_headPos);
+      trailPts.unshift(_headPos.clone());
+      if (trailPts.length > TRAIL_SEGS) trailPts.pop();
+      for (let i = 0; i < trailMeshes.length; i++) {
+        const bead = trailMeshes[i];
+        if (i >= trailPts.length) {
+          bead.visible = false;
+          continue;
+        }
+        bead.visible = true;
+        bead.position.copy(trailPts[i]);
+        const t = i / TRAIL_SEGS;
+        bead.scale.setScalar(1.15 - t * 0.85);
+        bead.material.opacity = 0.95 * (1 - t);
+      }
+    }
+
     function onResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -209,6 +243,7 @@
     renderer.setAnimationLoop(() => {
       const dt = clock.getDelta();
       for (const m of mixers) m.update(dt);
+      updateRibbon();
       updateSteam(dt);
       glowLight.intensity = 9 + Math.sin(clock.elapsedTime * 2.4) * 1.5;
       renderer.render(scene, camera);
