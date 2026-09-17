@@ -82,7 +82,7 @@
       setTimeout(placeAtFeet, 250);
     });
 
-    let mixer = null;
+    const mixers = [];
     const clock = new THREE.Clock();
 
     const STEAM_COUNT = 48;
@@ -155,14 +155,49 @@
         boostGlow(gltf.scene);
         root.add(gltf.scene);
         if (gltf.animations && gltf.animations.length) {
-          mixer = new THREE.AnimationMixer(gltf.scene);
-          mixer.clipAction(gltf.animations[0]).play();
+          const m = new THREE.AnimationMixer(gltf.scene);
+          m.clipAction(gltf.animations[0]).play();
+          mixers.push(m);
         }
-        log('Model loaded. Point at ENTER AR and squeeze the trigger.');
+        loadTrail();
       },
       undefined,
-      (err) => log('GLB failed to load: ' + err)
+      (err) => log('Circle failed to load: ' + err)
     );
+
+    function loadTrail() {
+      new GLTFLoader().load(
+        'light_trail.glb',
+        (gltf) => {
+          const trail = gltf.scene;
+          trail.scale.setScalar(0.24);
+          trail.position.y = 0.04;
+
+          let empty = null;
+          let plane = null;
+          trail.traverse((obj) => {
+            if (obj.name === 'Empty') empty = obj;
+            if (obj.name === 'Plane' || obj.isMesh) plane = obj.isMesh ? obj : plane;
+          });
+          if (empty && plane && plane.parent !== empty) {
+            empty.attach(plane);
+            plane.scale.setScalar(0.18);
+          }
+
+          boostGlow(trail);
+          root.add(trail);
+
+          if (gltf.animations && gltf.animations.length) {
+            const m = new THREE.AnimationMixer(trail);
+            gltf.animations.forEach((clip) => m.clipAction(clip).play());
+            mixers.push(m);
+          }
+          log('Circle + trail loaded. Point at ENTER AR and squeeze the trigger.');
+        },
+        undefined,
+        (err) => log('Trail failed to load: ' + err)
+      );
+    }
 
     function onResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -173,7 +208,7 @@
 
     renderer.setAnimationLoop(() => {
       const dt = clock.getDelta();
-      if (mixer) mixer.update(dt);
+      for (const m of mixers) m.update(dt);
       updateSteam(dt);
       glowLight.intensity = 9 + Math.sin(clock.elapsedTime * 2.4) * 1.5;
       renderer.render(scene, camera);
