@@ -11,7 +11,7 @@
     #ar { background: #6fe3a0; color: #042; }
     #vr { background: #9cf; color: #012; }
     #log { pointer-events: none; white-space: pre-wrap; text-align: center; font-size: 18px; max-width: 28em; min-height: 4em; }
-    canvas { position: fixed; inset: 0; }
+    canvas { position: fixed; inset: 0; z-index: 1; background: #102018; }
   </style>
 </head>
 <body>
@@ -20,21 +20,13 @@
     <button id="ar" type="button">ENTER AR (passthrough)</button>
     <button id="vr" type="button">ENTER VR (test)</button>
   </div>
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.167.1/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.167.1/examples/jsm/"
-    }
-  }
-  </script>
   <script type="module">
     const logEl = document.getElementById('log');
     const log = (m) => { if (logEl) logEl.textContent = String(m); };
     window.addEventListener('error', (e) => log('Error: ' + e.message));
     try {
-    const THREE = await import('three');
-    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const THREE = await import('https://unpkg.com/three@0.167.1/build/three.module.js');
+    const { GLTFLoader } = await import('https://unpkg.com/three@0.167.1/examples/jsm/loaders/GLTFLoader.js');
 
     const FORWARD = 0.6;
     const BELOW_HEAD = 1.15;
@@ -43,7 +35,7 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.xr.enabled = true;
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(0x102018, 1);
     renderer.toneMapping = THREE.NoToneMapping;
     document.body.appendChild(renderer.domElement);
 
@@ -79,8 +71,12 @@
     }
 
     renderer.xr.addEventListener('sessionstart', () => {
+      renderer.setClearColor(0x000000, 0);
       placeAtFeet();
       setTimeout(placeAtFeet, 250);
+    });
+    renderer.xr.addEventListener('sessionend', () => {
+      renderer.setClearColor(0x102018, 1);
     });
 
     const mixers = [];
