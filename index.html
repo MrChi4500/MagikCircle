@@ -1,1 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rotokawau Magic Circle</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #102018; color: #e8ffe8; font-family: system-ui, sans-serif; }
+    #hud { position: fixed; left: 12px; right: 12px; top: 16px; z-index: 10; text-align: center; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="hud">Use ENTER AR (not VR). Look down.</div>
+  <a-scene
+    xr-mode-ui="enabled: true; enterAREnabled: true; XRMode: ar"
+    vr-mode-ui="enabled: true"
+    renderer="alpha: true; colorManagement: true; antialias: false"
+    background="transparent: true"
+    webxr="requiredFeatures: ; optionalFeatures: local-floor, local, unbounded"
+    loading-screen="enabled: false"
+    magic-fx>
 
+    <a-assets>
+      <a-asset-item id="circle" src="magic_circle_v1.glb"></a-asset-item>
+    </a-assets>
+
+    <a-entity id="rig" position="0 0 -0.6">
+      <a-entity id="circle-model" gltf-model="#circle"></a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const RING = 0.95;
+
+    AFRAME.registerComponent('magic-fx', {
+      init: function () {
+        this.beads = [];
+        this.steam = [];
+        this.rig = null;
+        this.circle = null;
+        const scene = this.el;
+
+        scene.addEventListener('enter-vr', () => {
+          document.getElementById('hud').textContent =
+            scene.is('ar-mode') ? 'Passthrough on. Look down.' : 'VR mode (no room). Exit and use ENTER AR.';
+        });
+
+        const makeSphere = (color, r) => {
+          const mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(r, 10, 8),
+            new THREE.MeshBasicMaterial({ color: color, transparent: true, depthWrite: false })
+          );
+          mesh.frustumCulled = false;
+          return mesh;
+        };
+
+        scene.addEventListener('loaded', () => {
+          this.rig = document.querySelector('#rig').object3D;
+          this.circle = document.querySelector('#circle-model').object3D;
+          for (let i = 0; i < 24; i++) {
+            const m = makeSphere(0xffe9a8, 0.04);
+            this.rig.add(m);
+            this.beads.push(m);
+          }
+          for (let i = 0; i < 36; i++) {
+            const m = makeSphere(0xd7fbff, 0.035);
+            this.rig.add(m);
+            this.steam.push({
+              m: m,
+              a: Math.random() * Math.PI * 2,
+              age: Math.random() * 2,
+              life: 1.2 + Math.random(),
+              spin: (Math.random() - 0.5) * 0.2
+            });
+          }
+        });
+      },
+      tick: function (t, dt) {
+        if (!this.rig) return;
+        const sec = t / 1000;
+        if (this.circle) this.circle.rotation.y = sec * 0.35;
+        for (let i = 0; i < this.beads.length; i++) {
+          const a = sec * 1.15 - i * 0.12;
+          const fade = 1 - i / this.beads.length;
+          this.beads[i].position.set(Math.cos(a) * RING, 0.07, Math.sin(a) * RING);
+          this.beads[i].scale.setScalar(0.6 + fade * 1.1);
+          this.beads[i].material.opacity = 0.3 + fade * 0.7;
+        }
+        const step = Math.min(dt / 1000, 0.05);
+        for (const s of this.steam) {
+          s.age += step;
+          if (s.age > s.life) {
+            s.age = 0;
+            s.a = Math.random() * Math.PI * 2;
+          }
+          const k = s.age / s.life;
+          s.m.position.set(
+            Math.cos(s.a) * RING + s.spin * s.age,
+            0.04 + k * 0.65,
+            Math.sin(s.a) * RING
+          );
+          s.m.material.opacity = 0.85 * (1 - k);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
